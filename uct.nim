@@ -1,25 +1,26 @@
-import tateti
+#import tateti
+import ponghuaki
 import juego
 # Aca debo importar el juego
 ## LOs metodos que debe implementar
 #[ En vez de juego tablero
-method getState*(j:Juego):seq[float]{.base.} =
+proc getState*(j:Tablero):seq[float] =
     @[]
 
-method copia*(j:Juego):Juego{.base.}=
+proc copia*(j:Tablero):Tablero=
     echo "Se usa este metodo"
     j
 
-method legalAcciones*(j:Juego):seq[int]{.base.}=
+proc legalAcciones*(j:Tablero):seq[int]=
     @[]
 
-method applyAccion*(j:var Juego,idaccion:int){.base.}=
+proc applyAccion*(j:var Tablero,idaccion:int)=
     echo "Implementar"
 
 # Saber si el juego termino
-method isTerminal*(j:Juego):bool{.base.}=
+proc isTerminal*(j:Tablero):bool=
     0
-method reward*(j:Juego):int{.base.}=
+proc reward*(j:Tablero):int=
     0
 ]#
 import tables
@@ -43,25 +44,27 @@ type
         padre:Nodo
         accion:int
 
+proc newUctConfig*(num_sims:int,c:float):UctConfig=
+    UctConfig(num_sims:num_sims,c:c)
+
 
 proc ucb_score(n:Nodo,config:UctConfig):float=
     if n.visitas == 0:
         return 0
     var score = n.puntos.toFloat/n.visitas.toFloat
-    score += config.c * sqrt(2 * ln(n.padre.visitas.toFloat)/n.visitas.toFloat)
+    var medio =  sqrt(2 * ln(n.padre.visitas.toFloat)/n.visitas.toFloat)
+    score += config.c * medio
     score
+
 
 proc `$`*(n:Nodo):string=
     var s = "Estado: \n" & $n.estado.tablero & "\n"
     s &= "Quien juega: " & $n.estado.quien_juega & "\n"
     s &= "Accion: " & $n.accion & "\n"
-    s &= "Visitas: " & $n.visitas & " and puntos: " & $n.puntos & " \n"
-    s &= "Score " & $(n.puntos.toFloat/n.visitas.toFloat) & " \n"
+    s &= "Visitas: " & $n.visitas & " and puntos: " & $n.puntos  
     s
 
 
-proc newUctConfig*(num_sims:int,c:float):UctConfig=
-    UctConfig(num_sims:num_sims,c:c)
 
 proc newNodo(juego:Tablero,padre:Nodo,accion:int):Nodo=
     var accionesDisponibles = juego.legalAcciones()
@@ -116,21 +119,38 @@ proc expand(nodo:Nodo,verbose=false):Nodo=
     hijo
 
 proc bestHijo(nodo:Nodo,config:UctConfig,verbose=false):Nodo=
+    if verbose:
+        echo "Algo besthijo"
     var mejorHijo = nodo
     var i = 0
     var mejor_score = -1.0
-    #echo "Cantidad hijos"
-    #echo nodo.hijos.len
     for idaccion in nodo.hijos.keys:
         let hijo = nodo.hijos[idaccion]
+    
         let score =  hijo.ucb_score(config)
+        if verbose:
+            echo "Bet hijo"
+            echo "merjor hijo"
+            echo mejorHijo
+            echo ""
+            echo "mejor score: " & $mejor_score
+            echo "El actual"
+            echo hijo
+            echo ""
+            echo "scpre: " & $score
         if i == 0:
             mejorHijo = hijo
             mejor_score = score
-        if score < mejor_score:
+        if score > mejor_score:
             mejor_score=score
             mejorHijo = hijo
-        
+        i += 1 
+    if verbose:
+        echo "Bet hijo"
+        echo "merjor hijo"
+        echo mejorHijo
+        echo ""
+        echo "mejor score: " & $mejor_score
     mejorHijo
    
 proc treePolicy(n:Nodo,config:UctConfig,verbose=false):Nodo=
@@ -192,6 +212,7 @@ proc uct*(juego:Tablero,config:UctConfig,verbose=false):int=
         echo "Los hijos"
         echo raiz.hijos
         echo ""
+        
 
     return bestHijo(raiz,config,verbose).accion
         
